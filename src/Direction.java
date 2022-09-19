@@ -4,9 +4,9 @@ public class Direction{
     private final int cutPlace;
     private int bestPrice;
 
-    public Direction(CutDirection cutDirection, int distance, int bestPrice) {
+    public Direction(CutDirection cutDirection, int cutPlace, int bestPrice) {
         this.cutDirection = cutDirection;
-        this.cutPlace = distance;
+        this.cutPlace = cutPlace;
         this.bestPrice = bestPrice;
     }
 

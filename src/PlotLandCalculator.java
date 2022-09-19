@@ -1,34 +1,52 @@
+import javax.swing.*;
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PlotLandCalculator {
 
-    private Integer[][] priceTable;
+
     private final int subdivideCost;
 
     public static void main(String[] args){
         PlotLandCalculator calculator = new PlotLandCalculator(50);
-        calculator.configPriceTable();
-        System.out.println(PlotLandCalculator.printTwoDimensionalArrayTable(calculator.priceTable, true));
-        System.out.println(calculator.bestPriceByBruteForce(3, 6));
-        System.out.println(calculator.bestPriceByDynamicProgramming(3, 6));
-        System.out.println(calculator.bestPriceByGreedyAlgorithm(3, 6));
+        Land.configPriceTable();
+        Land bruteForceLand = calculator.bestPriceByBruteForce(new Land(3, 6));
+        Land greedyLand = calculator.bestPriceByGreedyAlgorithm(new Land(3,6));
+        System.out.println("Best Price of Dynamic Programming is " + calculator.bestPriceByDynamicProgramming(3,6));
+
+
+        JFrame frame = new JFrame("Brute Force Approach");
+        JPanel panel = new JPanel();
+        panel.setSize(bruteForceLand.getWidth() * 50, bruteForceLand.getHeight() * 50);
+        panel.setLayout(null);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(bruteForceLand.getWidth() * 50, bruteForceLand.getHeight() * 50 + 100);
+        JPanel layout = new JPanel();
+        layout.setLayout(new BoxLayout(layout, BoxLayout.Y_AXIS));
+        layout.add(calculator.printResult(panel, bruteForceLand, 50));
+        layout.add(new JLabel("The overall price is " + bruteForceLand.getBestPrice()));
+        frame.add(layout);
+        frame.setVisible(true);
+
+        JFrame greedyFrame = new JFrame("Greedy Algorithm Approach");
+        JPanel greedyPanel = new JPanel();
+        greedyPanel.setSize(greedyLand.getWidth() * 50, greedyLand.getHeight() * 50);
+        greedyPanel.setLayout(null);
+        greedyFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        greedyFrame.setSize(greedyLand.getWidth() * 50, greedyLand.getHeight() * 50 + 100);
+        JPanel greedyLayout = new JPanel();
+        greedyLayout.setLayout(new BoxLayout(greedyLayout, BoxLayout.Y_AXIS));
+        greedyLayout.add(calculator.printResult(greedyPanel, greedyLand, 50));
+        greedyLayout.add(new JLabel("The overall price is " + greedyLand.getBestPrice()));
+        greedyFrame.add(greedyLayout);
+        greedyFrame.setVisible(true);
+
     }
 
     //Initialize subdivide cost;
     public PlotLandCalculator(int subdivideCost) {
         this.subdivideCost = subdivideCost;
-    }
-
-    //Initialize Land Price
-    public void configPriceTable(){
-        priceTable = new Integer[6][6];
-        priceTable[0] = new Integer[]{20,40,100,130,150,200};
-        priceTable[1] = new Integer[]{40,140,250,320,400,450};
-        priceTable[2] = new Integer[]{100,250,350,420,450,500};
-        priceTable[3] = new Integer[]{130,320,420,500,600,700};
-        priceTable[4] = new Integer[]{150,400,450,600,700,800};
-        priceTable[5] = new Integer[]{200,450,500,700,800,900};
     }
 
     //Print function for 2D array
@@ -61,95 +79,141 @@ public class PlotLandCalculator {
         return (firstPartPrice + secondPartPrice - (subdivideLength * subdivideCost));
     }
 
-    //Get the original price of a land from priceTable
-    private int getLandPrice(int width, int length){
-        return priceTable[width - 1][length - 1];
-    }
-
     //Brute Force Approach
-    public int bestPriceByBruteForce(int width, int length){
-        return bestPriceByBruteForceHelper(width , length , new ArrayList<>());
+    public Land bestPriceByBruteForce(Land land){
+        return bestPriceByBruteForceHelper(land);
     }
 
-    private int bestPriceByBruteForceHelper(int width, int length, ArrayList<Direction> directions){
+    private Land bestPriceByBruteForceHelper(Land land){
         //Initialize the best price by original price
-        int bestPrice = getLandPrice(width, length);
+        Land bestLand = land;
         int firstPartPrice;
         int secondPartPrice;
         int totalPrice;
 
         //horizontally subdivide
         //Calculate all possibilities of horizontally subdivision
-        for(int x = 1; x < width; x++){
+        for(int x = 1; x < land.getWidth(); x++){
+            Land newLand = new Land(land.getWidth(), land.getHeight());
+            Land firstLand = bestPriceByBruteForceHelper(new Land(x, land.getHeight()));
+            Land secondLand = bestPriceByBruteForceHelper(new Land(land.getWidth() - x, land.getHeight()));
+            newLand.setFirstLand(firstLand);
+            newLand.setSecondLand(secondLand);
+            newLand.setSubdivision(new Direction(CutDirection.Horizontal, x, getTotalValue(firstLand.getBestPrice(),
+                    secondLand.getBestPrice(), land.getHeight())));
             //Recurse the divided land to find the best value and compare the original price without subdivision
-            firstPartPrice = Math.max(getLandPrice(x, length), bestPriceByBruteForceHelper(x, length, directions));
-            secondPartPrice = Math.max(getLandPrice(width - x, length), bestPriceByBruteForceHelper(width - x,
-                    length, directions));
+//            firstPartPrice = bestPriceByBruteForceHelper(x, length);
+//            secondPartPrice = bestPriceByBruteForceHelper(width - x, length);
             //Calculate the best price of two lands
-            totalPrice = getTotalValue(firstPartPrice, secondPartPrice, length);
             //best price replaced by total price if total price is higher than best price
-            if(totalPrice > bestPrice){
-                bestPrice = totalPrice;
+            if(newLand.getBestPrice() > bestLand.getBestPrice()){
+                bestLand = newLand;
             }
         }
         //vertically subdivide
         //Calculate all possibilities of vertically subdivision
-        for(int y = 1 ; y < length; y++){
+        for(int y = 1 ; y < land.getHeight(); y++){
+            Land newLand = new Land(land.getWidth(), land.getHeight());
             //Recurse the divided land to find the best value and compare the original price without subdivision
-            firstPartPrice = Math.max(getLandPrice(width, y), bestPriceByBruteForceHelper(width, y, directions));
-            secondPartPrice = Math.max(getLandPrice(width, length - y), bestPriceByBruteForceHelper(width,
-                    length - y, directions));
+            Land firstLand = bestPriceByBruteForceHelper(new Land(land.getWidth(), y));
+            Land secondLand = bestPriceByBruteForceHelper(new Land(land.getWidth(), land.getHeight() - y));
+            newLand.setFirstLand(firstLand);
+            newLand.setSecondLand(secondLand);
+            newLand.setSubdivision(new Direction(CutDirection.Vertical, y, getTotalValue(firstLand.getBestPrice(),
+                    secondLand.getBestPrice(), land.getWidth())));
             //Calculate the best price of two lands
-            totalPrice = getTotalValue(firstPartPrice, secondPartPrice, width);
+//            totalPrice = getTotalValue(firstPartPrice, secondPartPrice, land.getWidth());
             //best price replaced by total price if total price is higher than best price
-            if(totalPrice > bestPrice){
-                bestPrice = totalPrice;
+            if(newLand.getBestPrice() > bestLand.getBestPrice()){
+                bestLand = newLand;
             }
         }
         //Return the highest price of the land
-        return bestPrice;
+        return bestLand;
+    }
+
+    public JPanel printResult(JPanel panel, Land land, int size){
+        if(land.subdivision == null){
+            JLabel label = new JLabel(land.getWidth() + "x" + land.getHeight());
+            label.setSize(panel.getWidth(), panel.getHeight());
+            label.setLocation(0,0);
+            panel.add(label);
+            return panel;
+        }
+
+        Land firstLand = land.getFirstLand();
+        JPanel firstLandPanel = new JPanel();
+        firstLandPanel.setLayout(null);
+        firstLandPanel.setSize(firstLand.getWidth() * size, firstLand.getHeight() * size);
+        firstLandPanel.setBorder(BorderFactory.createLineBorder(Color.black));
+
+        Land secondLand = land.getSecondLand();
+        JPanel secondLandPanel = new JPanel();
+        secondLandPanel.setLayout(null);
+        secondLandPanel.setSize(secondLand.getWidth() * size, secondLand.getHeight() * size);
+        secondLandPanel.setBorder(BorderFactory.createLineBorder(Color.black));
+
+        switch(land.getSubdivision().getCutDirection()){
+            case Vertical:
+                secondLandPanel.setLocation(0, firstLand.getHeight() * size);
+                break;
+            case Horizontal:
+                secondLandPanel.setLocation(firstLand.getWidth() * size, 0);
+                break;
+        }
+        panel.add(firstLandPanel);
+        panel.add(secondLandPanel);
+        printResult(firstLandPanel, land.firstLand, size);
+        printResult(secondLandPanel, land.secondLand, size);
+        return panel;
     }
 
     //Greedy Algorithm Approach
-    public int bestPriceByGreedyAlgorithm(int width, int length){
+    public Land bestPriceByGreedyAlgorithm(Land land){
         //Get current best option
         //Direction contains the cut direction and the cut place
-        Direction direction = greedyOptionForBestPrice(width, length, getLandPrice(width, length));
+        Direction direction = greedyOptionForBestPrice(land.getWidth(), land.getHeight(), land.getLandPrice());
         //Read the cut direction
         switch (direction.getCutDirection()){
             //If vertical
             case Vertical -> {
-                int firstBestPart = bestPriceByGreedyAlgorithm(width, direction.getCutPlace());
-                int secondBestPart = bestPriceByGreedyAlgorithm(width, length - direction.getCutPlace());
-                direction.setBestPrice(getTotalValue(firstBestPart, secondBestPart, width));
+                Land firstLand = bestPriceByGreedyAlgorithm(new Land(land.getWidth(), direction.getCutPlace()));
+                Land secondLand = bestPriceByGreedyAlgorithm(new Land(land.getWidth(), land.getHeight() - direction.getCutPlace()));
+                land.setFirstLand(firstLand);
+                land.setSecondLand(secondLand);
+                land.setSubdivision(direction);
+                land.getSubdivision().setBestPrice(getTotalValue(firstLand.getBestPrice(), secondLand.getBestPrice(), land.getWidth()));
             }
             //If horizontal
             case Horizontal -> {
-                int firstBestPart = bestPriceByGreedyAlgorithm(direction.getCutPlace(), length);
-                int secondBestPart = bestPriceByGreedyAlgorithm(width - direction.getCutPlace(), length);
-                direction.setBestPrice(getTotalValue(firstBestPart, secondBestPart, width));
+                Land firstLand = bestPriceByGreedyAlgorithm(new Land(direction.getCutPlace(), land.getHeight()));
+                Land secondLand = bestPriceByGreedyAlgorithm(new Land(land.getWidth() - direction.getCutPlace(), land.getHeight()));
+                land.setFirstLand(firstLand);
+                land.setSecondLand(secondLand);
+                land.setSubdivision(direction);
+                land.getSubdivision().setBestPrice(getTotalValue(firstLand.getBestPrice(), secondLand.getBestPrice(), land.getWidth()));
             }
             //No further action if not require cutting
             case NotRequired -> {}
         }
         //Return the best price
-        return direction.getBestPrice();
+        return land;
     }
 
     //Find greedy option for current situation
     //Almost same approach with brute force, but only process next step after measure of all possibilities.
     //No further action will take if no subdivision make more value than original land.
-    public Direction greedyOptionForBestPrice(int width, int length, int bestPrice){
+    public Direction greedyOptionForBestPrice(int width, int height,  int bestPrice){
         CutDirection cutDirection = CutDirection.NotRequired;
         int subdivisionPlace = 0;
-        int firstPartPrice;
-        int secondPartPrice;
+        Land firstLand;
+        Land secondLand;
         int totalPrice;
         //horizontal subdivision
         for(int x = 1; x < width; x++){
-            firstPartPrice = getLandPrice(x, length);
-            secondPartPrice = getLandPrice(width - x, length);
-            totalPrice = getTotalValue(firstPartPrice, secondPartPrice, length);
+            firstLand = new Land(x, height);
+            secondLand = new Land(width - x, height);
+            totalPrice = getTotalValue(firstLand.getLandPrice(), secondLand.getLandPrice(), height);
             if(totalPrice > bestPrice){
                 cutDirection = CutDirection.Horizontal;
                 subdivisionPlace = x;
@@ -157,10 +221,10 @@ public class PlotLandCalculator {
             }
         }
         //vertical subdivision
-        for(int y = 1; y < length; y++){
-            firstPartPrice = getLandPrice(width, y);
-            secondPartPrice = getLandPrice(width, length - y);
-            totalPrice = getTotalValue(firstPartPrice, secondPartPrice, width);
+        for(int y = 1; y < height; y++){
+            firstLand = new Land(width, y);
+            secondLand = new Land(width, height - y);
+            totalPrice = getTotalValue(firstLand.getLandPrice(), secondLand.getLandPrice(), width);
             if(totalPrice > bestPrice){
                 cutDirection = CutDirection.Vertical;
                 subdivisionPlace = y;
@@ -179,6 +243,7 @@ public class PlotLandCalculator {
         //Start inserting the value from top left
         for(int x = 1; x < dynamicProgrammingTable.length; x++){
             for(int y = 1; y < dynamicProgrammingTable[x].length; y++){
+                Land newLand = new Land(x,y);
                 //Get all value in same column from table
                 Integer[] verticalArray = getVerticalArray(x, y, dynamicProgrammingTable);
                 //Get all value in same row from table
@@ -193,7 +258,7 @@ public class PlotLandCalculator {
                 //200(first land) + 450(second land) - 50(subdivision cost) x 6(subdivision length) = 350
                 int verticalBestPrice = BestPriceForEachCombination(verticalArray, y);
                 //The original price without subdivision
-                int originalPrice = getLandPrice(x, y);
+                int originalPrice = newLand.getLandPrice();
                 //Get the highest price and insert to the table
                 dynamicProgrammingTable[x][y] = this.compareThreeInteger(horizontalBestPrice, verticalBestPrice, originalPrice);
             }
@@ -221,18 +286,6 @@ public class PlotLandCalculator {
         }
         //Return 2D array
         return dynamicProgrammingTable;
-
-//        for(int x = 1; x < dynamicProgrammingTable.length; x++){
-//            for(int y = 1; y < dynamicProgrammingTable[x].length; y++){
-//
-//                Integer[] verticalArray = getVerticalArray(x, y, dynamicProgrammingTable);
-//                Integer[] horizontalArray = getHorizontalArray(x, y, dynamicProgrammingTable);
-//                int horizontalBestPrice = BestPriceForEachLand(horizontalArray, x);
-//                int verticalBestPrice = BestPriceForEachLand(verticalArray, y);
-//                int originalPrice = getLandPrice(x, y);
-//                dynamicProgrammingTable[x][y] = this.compareThreeInteger(horizontalBestPrice, verticalBestPrice, originalPrice);
-//            }
-//        }
     }
 
     //Get Vertical subarray from 2D array
@@ -302,11 +355,4 @@ public class PlotLandCalculator {
         }
         return output;
     }
-//    public void configPriceTable(int width, int length){
-//    priceTable = new int[width][length];
-//    for(int y = 0; y < priceTable.length; y++){
-//        for(int x = 0; x < priceTable[y].length; x++){
-//            priceTable[y][x] = (y + x + 1) * 100;
-//        }
-//    }
     }
